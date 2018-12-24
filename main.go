@@ -19,11 +19,15 @@ func main() {
 		}
 	)
 
-	_, _, err = dialer.Dial("wss://irc-ws.chat.twitch.tv:443", nil)
+	conn, _, err := dialer.Dial("wss://irc-ws.chat.twitch.tv:443", nil)
 	if err != nil {
 		fmt.Printf("[%s] Cannot connect to Twitch IRC.\n", time.Now())
 		return
 	}
 
 	fmt.Printf("[%s] Connected to Twitch IRC!\n", time.Now())
+
+	conn.WriteMessage(1, []byte("PASS <password>\r\n"))
+	conn.WriteMessage(1, []byte("NICK <name>\r\n"))
+	conn.WriteMessage(1, []byte("JOIN <channel>\r\n"))
 }
