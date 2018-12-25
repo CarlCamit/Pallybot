@@ -46,7 +46,12 @@ func main() {
 				return
 			}
 
-			fmt.Printf("%s", bytes.NewBuffer(messageBytes).String())
+			message := bytes.NewBuffer(messageBytes).String()
+			if message == "PING :tmi.twitch.tv\r\n" {
+				conn.WriteMessage(1, []byte("PONG :tmi.twitch.tv\r\n"))
+			}
+
+			fmt.Printf("%s", message)
 		}
 	}()
 
