@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -17,17 +19,36 @@ func main() {
 			WriteBufferSize:  1024,
 			HandshakeTimeout: 30 * time.Second,
 		}
+		wg = sync.WaitGroup{}
 	)
 
 	conn, _, err := dialer.Dial("wss://irc-ws.chat.twitch.tv:443", nil)
 	if err != nil {
-		fmt.Printf("[%s] Cannot connect to Twitch IRC.\n", time.Now())
+		fmt.Printf("[%s] Cannot connect to Twitch IRC.\r\n", time.Now())
 		return
 	}
 
-	fmt.Printf("[%s] Connected to Twitch IRC!\n", time.Now())
+	fmt.Printf("[%s] Connected to Twitch IRC!\r\n", time.Now())
 
 	conn.WriteMessage(1, []byte("PASS <password>\r\n"))
 	conn.WriteMessage(1, []byte("NICK <name>\r\n"))
 	conn.WriteMessage(1, []byte("JOIN <channel>\r\n"))
+
+	wg.Add(1)
+
+	go func() {
+		defer wg.Done()
+		for {
+			_, messageBytes, err := conn.ReadMessage()
+			if err != nil {
+				fmt.Printf("[%s] Connection to Twitch IRC lost, err: %s\r\n", time.Now(), err)
+				conn.Close()
+				return
+			}
+
+			fmt.Printf("%s", bytes.NewBuffer(messageBytes).String())
+		}
+	}()
+
+	wg.Wait()
 }
