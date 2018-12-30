@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -13,13 +14,12 @@ func main() {
 	fmt.Printf("[%s] Connecting to Twitch IRC...\n", time.Now())
 
 	var (
-		err    error
+		wg     = sync.WaitGroup{}
 		dialer = websocket.Dialer{
 			ReadBufferSize:   1024,
 			WriteBufferSize:  1024,
 			HandshakeTimeout: 30 * time.Second,
 		}
-		wg = sync.WaitGroup{}
 	)
 
 	conn, _, err := dialer.Dial("wss://irc-ws.chat.twitch.tv:443", nil)
@@ -46,12 +46,31 @@ func main() {
 				return
 			}
 
-			message := bytes.NewBuffer(messageBytes).String()
-			if message == "PING :tmi.twitch.tv\r\n" {
-				conn.WriteMessage(1, []byte("PONG :tmi.twitch.tv\r\n"))
+			fmt.Printf("%s", messageBytes)
+
+			rawMessage := bytes.NewBuffer(messageBytes).String()
+			// Check if message is a heartbeat
+			if rawMessage == "PING :tmi.twitch.tv\r\n" {
+				chatResponse := "PONG :tmi.twitch.tv\r\n"
+				fmt.Printf("%s", chatResponse)
+				conn.WriteMessage(1, []byte(chatResponse))
+				// Move on to next message after responding
+				continue
 			}
 
-			fmt.Printf("%s", message)
+			rawMessageSlice := strings.Split(rawMessage, " ")
+			// Check if the message is a chat message
+			if rawMessageSlice[1] != "PRIVMSG" {
+				// Move on to next message if not a chat message
+				continue
+			}
+
+			chatMessageSlice := strings.Split(rawMessageSlice[3], " ")
+			// Check if message is a command
+			if strings.HasPrefix(chatMessageSlice[0], ":!") {
+				command := strings.TrimPrefix(chatMessageSlice[0], ":!")
+				fmt.Printf("%s", command)
+			}
 		}
 	}()
 
